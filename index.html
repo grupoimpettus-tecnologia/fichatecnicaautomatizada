@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Ficha Técnica - Busca de Produtos (T.I Degust)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #db702d;
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+            text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+        }
+
+        .icon {
+            font-size: 1.2em;
+            margin-right: 8px;
+        }
+
+        .icon-image {
+            width: 40px;
+            height: 40px;
+            margin-right: 15px;
+            vertical-align: middle;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .search-section {
+            padding: 60px 40px 150px 40px;
+            background: #f8f9fa;
+        }
+
+        .search-container {
+            position: relative;
+            max-width: 600px;
+            margin: 0 auto;
+            overflow: visible;
+            z-index: 1000;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 20px 60px 20px 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 0 0 15px 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 99999;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            margin-top: 5px;
+            isolation: isolate;
+        }
+
+        /* Estilização customizada da barra de rolagem para sugestões */
+        .suggestions::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .suggestions::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .suggestions::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+
+        .suggestions::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .suggestion-item {
+            padding: 15px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid #f8f9fa;
+            transition: background-color 0.2s ease;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .suggestion-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .results-section {
+            padding: 40px;
+            display: none;
+        }
+
+        .product-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .product-name {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .ingredients-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ingredients-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .ingredient-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.2s ease;
+        }
+
+        .ingredient-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .ingredient-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+        }
+
+        .ingredient-measure {
+            color: #667eea;
+            font-weight: 500;
+            font-size: 1rem;
+        }
+
+        .pre-preparo-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .pre-preparo-title {
+            color: #856404;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .no-results i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #dee2e6;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .search-section, .results-section {
+                padding: 20px;
+            }
+            
+            .ingredients-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><img src="icone_titulo.png" alt="Ícone" class="icon-image"> Gerador Ficha Técnica</h1>
+            <p>Busque produtos e visualize seus insumos e medidas, com diluição dos pré-preparos</p>
+        </div>
+
+        <div class="search-section">
+            <div class="file-upload-section" style="margin-bottom: 30px; text-align: center;">
+                <input type="file" id="excelFile" accept=".xlsx,.xls" style="display: none;">
+                <button onclick="document.getElementById('excelFile').click()" style="
+                    background: #db702d;
+                    color: white;
+                    border: none;
+                    padding: 15px 30px;
+                    border-radius: 25px;
+                    font-size: 1.1rem;
+                    cursor: pointer;
+                    box-shadow: 0 5px 15px rgba(219, 112, 45, 0.3);
+                    transition: transform 0.2s ease;
+                " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                    📁 Carregar Arquivo Excel
+                </button>
+                <p id="fileStatus" style="margin-top: 10px; color: #6c757d; font-size: 0.9rem;"></p>
+            </div>
+            
+            <div class="search-container">
+                <input type="text" id="searchInput" class="search-input" placeholder="Digite o nome do produto para buscar..." disabled>
+                <span class="search-icon" onclick="searchProduct(document.getElementById('searchInput').value)">🔍</span>
+                <div id="suggestions" class="suggestions"></div>
+            </div>
+        </div>
+
+        <div id="resultsSection" class="results-section">
+            <div id="productInfo" class="product-info">
+                <div class="product-name" id="productName"></div>
+                <div style="margin-top: 20px;">
+                    <button id="exportExcelBtn" onclick="exportToExcel()" style="
+                        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                        color: white;
+                        border: none;
+                        padding: 12px 25px;
+                        border-radius: 25px;
+                        font-size: 1rem;
+                        cursor: pointer;
+                        box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+                        transition: transform 0.2s ease;
+                        display: none;
+                    " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                        📊 Exportar Ficha Técnica (Excel)
+                    </button>
+                </div>
+            </div>
+
+            <div class="ingredients-section">
+                <h2 class="section-title">
+                    <span class="icon">📋</span>
+                    Insumos do Produto
+                </h2>
+                <div id="ingredientsGrid" class="ingredients-grid"></div>
+            </div>
+
+            <div id="prePreparoSection" class="pre-preparo-section" style="display: none;">
+                <h3 class="pre-preparo-title">
+                    <span class="icon">⚙️</span>
+                    Insumos de Pré-Preparo
+                </h3>
+                <div id="prePreparoGrid" class="ingredients-grid"></div>
+            </div>
+        </div>
+
+        <div id="loadingSection" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Carregando dados...</p>
+        </div>
+
+        <div id="noResultsSection" class="no-results" style="display: none;">
+            <span style="font-size: 3rem; margin-bottom: 20px; color: #dee2e6;">🔍</span>
+            <h3>Nenhum produto encontrado</h3>
+            <p>Tente buscar por outro termo</p>
+        </div>
+    </div>
+
+    <script>
+        // Variáveis globais para armazenar dados do Excel
+        let produtosData = {};
+        let prePreparoData = {};
+        let fichaTecnicaData = [];
+        let paraCadastroData = [];
+        let produtoAtual = null; // Armazenar dados do produto selecionado
+
+        const searchInput = document.getElementById('searchInput');
+        const suggestions = document.getElementById('suggestions');
+        const resultsSection = document.getElementById('resultsSection');
+        const loadingSection = document.getElementById('loadingSection');
+        const noResultsSection = document.getElementById('noResultsSection');
+        const fileStatus = document.getElementById('fileStatus');
+        const excelFile = document.getElementById('excelFile');
+
+        // Função para processar arquivo Excel
+        function processExcelFile(file) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    console.log('Planilhas encontradas:', workbook.SheetNames);
+                    
+                    // Processar planilha FICHA TÉCNICA
+                    if (workbook.SheetNames.includes('FICHA TÉCNICA')) {
+                        const fichaSheet = workbook.Sheets['FICHA TÉCNICA'];
+                        fichaTecnicaData = XLSX.utils.sheet_to_json(fichaSheet, { header: 1 });
+                        console.log('Dados da FICHA TÉCNICA carregados:', fichaTecnicaData.length, 'linhas');
+                    }
+                    
+                    // Processar planilha PARA CADASTRO SISTEMA
+                    if (workbook.SheetNames.includes('PARA CADASTRO SISTEMA')) {
+                        const cadastroSheet = workbook.Sheets['PARA CADASTRO SISTEMA'];
+                        paraCadastroData = XLSX.utils.sheet_to_json(cadastroSheet, { header: 1 });
+                        console.log('Dados do PARA CADASTRO SISTEMA carregados:', paraCadastroData.length, 'linhas');
+                    }
+                    
+                    // Processar dados e criar estrutura de produtos
+                    processProductsData();
+                    
+                    fileStatus.textContent = '✅ Arquivo carregado com sucesso! ' + Object.keys(produtosData).length + ' produtos encontrados.';
+                    fileStatus.style.color = '#28a745';
+                    
+                    // Habilitar campo de busca
+                    searchInput.disabled = false;
+                    searchInput.placeholder = 'Digite o nome do produto para buscar...';
+                    
+                } catch (error) {
+                    console.error('Erro ao processar arquivo:', error);
+                    fileStatus.textContent = '❌ Erro ao processar arquivo Excel. Verifique se o formato está correto.';
+                    fileStatus.style.color = '#dc3545';
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Função para processar dados e criar estrutura de produtos
+        function processProductsData() {
+            produtosData = {};
+            
+            // Processar FICHA TÉCNICA (colunas F, G, H, I)
+            for (let i = 1; i < fichaTecnicaData.length; i++) {
+                const row = fichaTecnicaData[i];
+                if (row && row[5] && row[6] && row[8]) { // Colunas F(5), G(6), H(7), I(8)
+                    const produto = row[5].toString().trim();
+                    const insumo = row[6].toString().trim();
+                    const unidade = row[7] ? row[7].toString().trim() : ''; // Coluna H(7) - Unidade de medida
+                    const medida = row[8].toString().trim();
+                    
+                    if (produto && insumo && medida) {
+                        if (!produtosData[produto]) {
+                            produtosData[produto] = { insumos: [] };
+                        }
+                        
+                        produtosData[produto].insumos.push({
+                            nome: insumo,
+                            unidade: formatarUnidade(unidade),
+                            medida: formatarMedida(medida)
+                        });
+                    }
+                }
+            }
+            
+            console.log('Produtos processados:', Object.keys(produtosData));
+        }
+
+        // Função para formatar medida com 4 casas decimais (usa vírgula como separador)
+        function formatarMedida(medida) {
+            if (!medida) return medida;
+            
+            // Converter para número se possível
+            const numero = parseFloat(medida.toString().replace(',', '.'));
+            
+            if (!isNaN(numero)) {
+                return numero.toFixed(4).replace('.', ',');
+            }
+            
+            // Se não for um número válido, retornar como está
+            return medida.toString();
+        }
+
+        // Função para formatar unidade de medida (UND -> UN)
+        function formatarUnidade(unidade) {
+            if (!unidade) return '';
+            const unidadeUpper = unidade.toString().trim().toUpperCase();
+            return unidadeUpper === 'UND' ? 'UN' : unidadeUpper;
+        }
+
+        // Função para converter medida formatada (com vírgula) de volta para número
+        function parseMedidaFormatada(medidaFormatada) {
+            if (!medidaFormatada) return 0;
+            return parseFloat(medidaFormatada.toString().replace(',', '.'));
+        }
+
+        // Função para buscar insumos de pré-preparo
+        function buscarPrePreparo(nomeInsumo, medida) {
+            console.log('=== INICIANDO BUSCA PRÉ-PREPARO ===');
+            console.log('Nome do insumo:', nomeInsumo);
+            console.log('Medida fornecida:', medida);
+            
+            const insumosPrePreparo = [];
+            const medidaBase = parseFloat(medida.toString().replace(',', '.'));
+            
+            // Buscar na planilha FICHA TÉCNICA (colunas F, G, H, I)
+            // Coluna F (índice 5) = PRODUTOS
+            // Coluna G (índice 6) = INSUMOS
+            // Coluna H (índice 7) = UNIDADE DE MEDIDA
+            // Coluna I (índice 8) = MEDIDA DO INSUMO
+            
+            for (let i = 1; i < fichaTecnicaData.length; i++) {
+                const row = fichaTecnicaData[i];
+                if (row && row[5] && row[6] && row[8]) {
+                    const produto = row[5].toString().trim();
+                    const insumo = row[6].toString().trim();
+                    const unidade = row[7] ? row[7].toString().trim() : ''; // Coluna H(7) - Unidade de medida
+                    const medidaInsumo = row[8].toString().trim();
+                    
+                    // Verificar se o produto corresponde ao insumo de pré-preparo
+                    const produtoMatch = produto.toLowerCase().includes(nomeInsumo.toLowerCase()) &&
+                                       (produto.toLowerCase().includes('pré-preparo') || 
+                                        produto.toLowerCase().includes('pre-preparo') ||
+                                        produto.toLowerCase().includes('pré preparo') ||
+                                        produto.toLowerCase().includes('pre preparo'));
+                    
+                    if (produtoMatch && insumo && medidaInsumo) {
+                        // Pular o próprio insumo (ex: FAROFA SIMPLES (Pré-Preparo))
+                        if (!insumo.toLowerCase().includes('pré-preparo') && 
+                            !insumo.toLowerCase().includes('pre-preparo') &&
+                            !insumo.toLowerCase().includes('pré preparo') &&
+                            !insumo.toLowerCase().includes('pre preparo')) {
+                            // Calcular a medida proporcional
+                            const medidaOriginal = parseFloat(medidaInsumo.toString().replace(',', '.'));
+                            const medidaProporcional = medidaOriginal * medidaBase;
+                            
+                            insumosPrePreparo.push({
+                                nome: insumo,
+                                unidade: formatarUnidade(unidade),
+                                medida: formatarMedida(medidaProporcional.toString())
+                            });
+                            console.log('Adicionado:', insumo, '=', medidaOriginal, 'x', medidaBase, '=', medidaProporcional);
+                        }
+                    }
+                }
+            }
+            
+            console.log('=== RESULTADO FINAL ===');
+            console.log('Total de insumos encontrados:', insumosPrePreparo.length);
+            console.log('Insumos:', insumosPrePreparo);
+            
+            return insumosPrePreparo;
+        }
+
+        // Função para mostrar sugestões
+        function showSuggestions(query) {
+            if (query.length < 2) {
+                suggestions.style.display = 'none';
+                return;
+            }
+
+            const matches = Object.keys(produtosData).filter(produto => 
+                produto.toLowerCase().includes(query.toLowerCase())
+            );
+
+            if (matches.length === 0) {
+                suggestions.style.display = 'none';
+                return;
+            }
+
+            suggestions.innerHTML = matches.map(produto => 
+                `<div class="suggestion-item" onclick="selectProduct('${produto}')">${produto}</div>`
+            ).join('');
+
+            suggestions.style.display = 'block';
+        }
+
+        // Função para selecionar produto
+        function selectProduct(produto) {
+            searchInput.value = produto;
+            suggestions.style.display = 'none';
+            searchProduct(produto);
+        }
+
+        // Função para buscar produto
+        function searchProduct(produto) {
+            console.log('Buscando produto:', produto);
+            console.log('Produtos disponíveis:', Object.keys(produtosData));
+            
+            showLoading();
+            
+            setTimeout(() => {
+                if (produtosData[produto]) {
+                    console.log('Produto encontrado:', produto);
+                    displayProduct(produto, produtosData[produto]);
+                } else {
+                    console.log('Produto não encontrado:', produto);
+                    showNoResults();
+                }
+            }, 1000);
+        }
+
+        // Função para exibir produto
+        function displayProduct(produto, data) {
+            hideAllSections();
+            resultsSection.style.display = 'block';
+
+            // Armazenar dados do produto atual para exportação
+            produtoAtual = {
+                nome: produto,
+                insumos: data.insumos
+            };
+
+            document.getElementById('productName').textContent = produto;
+            
+            // Mostrar botão de exportação
+            document.getElementById('exportExcelBtn').style.display = 'inline-block';
+            
+            const ingredientsGrid = document.getElementById('ingredientsGrid');
+            const prePreparoSection = document.getElementById('prePreparoSection');
+            const prePreparoGrid = document.getElementById('prePreparoGrid');
+
+            // Separar insumos normais dos de pré-preparo
+            const insumosNormais = [];
+            const insumosPrePreparo = [];
+
+            data.insumos.forEach(insumo => {
+                // Verificar se o insumo contém qualquer variação de pré-preparo usando regex
+                const nomeInsumo = insumo.nome.toLowerCase();
+                const prePreparoRegex = /pr[eé][\s\-]?preparo/i;
+                const isPrePreparo = prePreparoRegex.test(insumo.nome);
+                
+                if (isPrePreparo) {
+                    insumosPrePreparo.push(insumo);
+                } else {
+                    insumosNormais.push(insumo);
+                }
+            });
+
+            // Exibir insumos normais
+            ingredientsGrid.innerHTML = insumosNormais.map(insumo => `
+                <div class="ingredient-card">
+                    <div class="ingredient-name">${insumo.nome}${insumo.unidade ? ` (${insumo.unidade})` : ''}</div>
+                    <div class="ingredient-measure">${insumo.medida}</div>
+                </div>
+            `).join('');
+
+            // Exibir insumos de pré-preparo se existirem
+            if (insumosPrePreparo.length > 0) {
+                prePreparoSection.style.display = 'block';
+                
+                // Para cada insumo de pré-preparo, buscar os detalhes
+                let prePreparoHTML = '';
+                insumosPrePreparo.forEach(insumo => {
+                    // Remover todas as variações de pré-preparo do nome usando regex
+                    const nomeBase = insumo.nome
+                        .replace(/\s*\([^)]*pr[eé][\s\-]?preparo[^)]*\)/gi, '')
+                        .replace(/\s*pr[eé][\s\-]?preparo/gi, '')
+                        .trim();
+                    const insumosDetalhados = buscarPrePreparo(nomeBase, insumo.medida);
+                    
+                            prePreparoHTML += `
+                        <div class="ingredient-card">
+                            <div class="ingredient-name">${nomeBase} - Detalhamento</div>
+                            <div class="ingredient-measure">Medida base: ${insumo.medida}</div>
+                            <div style="margin-top: 10px;">
+                                ${insumosDetalhados.map(detalhe => `
+                                    <div style="margin: 5px 0; padding: 8px; background: #fff; border-radius: 5px; border-left: 3px solid #667eea;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <strong>${detalhe.nome}${detalhe.unidade ? ` (${detalhe.unidade})` : ''}</strong>
+                                            <span style="color: #667eea; font-weight: 600;">${detalhe.medida}</span>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                prePreparoGrid.innerHTML = prePreparoHTML;
+            } else {
+                prePreparoSection.style.display = 'none';
+            }
+        }
+
+        // Função para mostrar loading
+        function showLoading() {
+            hideAllSections();
+            loadingSection.style.display = 'block';
+        }
+
+        // Função para mostrar sem resultados
+        function showNoResults() {
+            hideAllSections();
+            noResultsSection.style.display = 'block';
+        }
+
+        // Função para esconder todas as seções
+        function hideAllSections() {
+            resultsSection.style.display = 'none';
+            loadingSection.style.display = 'none';
+            noResultsSection.style.display = 'none';
+        }
+
+        // Event listeners
+        searchInput.addEventListener('input', (e) => {
+            showSuggestions(e.target.value);
+        });
+
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchProduct(e.target.value);
+            }
+        });
+
+        // Esconder sugestões ao clicar fora
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-container')) {
+                suggestions.style.display = 'none';
+            }
+        });
+
+        // Event listeners
+        excelFile.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                fileStatus.textContent = '📁 Processando arquivo...';
+                fileStatus.style.color = '#6c757d';
+                processExcelFile(file);
+            }
+        });
+
+        // Função para exportar ficha técnica para Excel
+        function exportToExcel() {
+            if (!produtoAtual) {
+                alert('Nenhum produto selecionado para exportar.');
+                return;
+            }
+
+            console.log('Exportando ficha técnica para Excel:', produtoAtual);
+
+            // Criar dados da planilha no novo formato
+            const dadosPlanilha = [];
+            
+            // Cabeçalho (linha 1) - apenas 3 colunas
+            dadosPlanilha.push(['Produto', 'Item de estoque', 'Quantidade do item']);
+            
+            // Separar insumos normais dos de pré-preparo
+            const insumosNormais = [];
+            const insumosPrePreparo = [];
+
+            produtoAtual.insumos.forEach(insumo => {
+                const nomeInsumo = insumo.nome.toLowerCase();
+                const prePreparoRegex = /pr[eé][\s\-]?preparo/i;
+                const isPrePreparo = prePreparoRegex.test(insumo.nome);
+                
+                if (isPrePreparo) {
+                    insumosPrePreparo.push(insumo);
+                } else {
+                    insumosNormais.push(insumo);
+                }
+            });
+
+            // Adicionar insumos normais
+            insumosNormais.forEach(insumo => {
+                dadosPlanilha.push([
+                    produtoAtual.nome, // Produto
+                    insumo.nome, // Item de estoque
+                    parseMedidaFormatada(insumo.medida).toFixed(4) // Quantidade do item
+                ]);
+            });
+
+            // Adicionar insumos de pré-preparo com detalhamento
+            insumosPrePreparo.forEach(insumo => {
+                const nomeBase = insumo.nome
+                    .replace(/\s*\([^)]*pr[eé][\s\-]?preparo[^)]*\)/gi, '')
+                    .replace(/\s*pr[eé][\s\-]?preparo/gi, '')
+                    .trim();
+                
+                const insumosDetalhados = buscarPrePreparo(nomeBase, insumo.medida);
+                
+                // Adicionar o insumo de pré-preparo principal
+                dadosPlanilha.push([
+                    produtoAtual.nome, // Produto
+                    insumo.nome, // Item de estoque
+                    parseMedidaFormatada(insumo.medida).toFixed(4) // Quantidade do item
+                ]);
+
+                // Adicionar insumos detalhados
+                insumosDetalhados.forEach(detalhe => {
+                    dadosPlanilha.push([
+                        `${nomeBase} (Pré-Preparo)`, // Produto
+                        detalhe.nome, // Item de estoque
+                        parseMedidaFormatada(detalhe.medida).toFixed(4) // Quantidade do item
+                    ]);
+                });
+            });
+
+            // Criar workbook
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(dadosPlanilha);
+            
+            // Configurar largura das colunas
+            ws['!cols'] = [
+                { wch: 30 }, // Produto
+                { wch: 40 }, // Item de estoque
+                { wch: 20 }  // Quantidade do item
+            ];
+
+            // Aplicar formatação ao cabeçalho
+            const headerRange = XLSX.utils.decode_range(ws['!ref']);
+            for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
+                const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+                if (!ws[cellAddress]) continue;
+                
+                ws[cellAddress].s = {
+                    fill: { fgColor: { rgb: "2C5F5F" } }, // Cor de fundo teal
+                    font: { bold: true, color: { rgb: "FFFFFF" } }, // Texto branco e negrito
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: {
+                        top: { style: "thin", color: { rgb: "CCCCCC" } },
+                        bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+                        left: { style: "thin", color: { rgb: "CCCCCC" } },
+                        right: { style: "thin", color: { rgb: "CCCCCC" } }
+                    }
+                };
+            }
+
+            // Aplicar formatação às linhas de dados
+            for (let row = 1; row <= headerRange.e.r; row++) {
+                for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
+                    const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+                    if (!ws[cellAddress]) continue;
+                    
+                    // Cor de fundo alternada
+                    const bgColor = row % 2 === 0 ? "F8F9FA" : "FFFFFF";
+                    
+                    ws[cellAddress].s = {
+                        fill: { fgColor: { rgb: bgColor } },
+                        alignment: { 
+                            horizontal: col === 2 ? "right" : "left", // Quantidade alinhada à direita
+                            vertical: "center" 
+                        },
+                        border: {
+                            top: { style: "thin", color: { rgb: "CCCCCC" } },
+                            bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+                            left: { style: "thin", color: { rgb: "CCCCCC" } },
+                            right: { style: "thin", color: { rgb: "CCCCCC" } }
+                        }
+                    };
+                }
+            }
+            
+            // Adicionar planilha ao workbook
+            XLSX.utils.book_append_sheet(wb, ws, 'FICHA TÉCNICA');
+            
+            // Gerar arquivo
+            const nomeArquivo = `Ficha_Tecnica_${produtoAtual.nome.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
+            XLSX.writeFile(wb, nomeArquivo);
+            
+            console.log('Arquivo Excel gerado:', nomeArquivo);
+        }
+
+        // Inicialização
+        window.addEventListener('load', () => {
+            console.log('Página carregada. Aguardando upload do arquivo Excel...');
+            fileStatus.textContent = '📁 Selecione o arquivo Excel para começar';
+            fileStatus.style.color = '#6c757d';
+        });
+    </script>
+</body>
+</html>
